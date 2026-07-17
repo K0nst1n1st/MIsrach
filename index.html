@@ -271,14 +271,27 @@
     }
     render();
   }
-  function onPosErr(e){
-    statusEl.textContent = e.code===1
-      ? 'Standortzugriff verweigert. Bitte in den Einstellungen erlauben und neu laden.'
-      : 'Standort konnte nicht ermittelt werden.';
+  function locate(){
+    // 1. Versuch: schnell & grob (WLAN/Funkzelle) – reicht für die Richtung völlig
+    navigator.geolocation.getCurrentPosition(onPos, function(e){
+      if(e.code===1){
+        statusEl.textContent='Standortzugriff verweigert. Bitte in den Browser-Einstellungen erlauben und die Seite neu laden.';
+        return;
+      }
+      // 2. Versuch: hohe Genauigkeit (GPS), längeres Zeitfenster
+      statusEl.textContent='Suche GPS-Signal …';
+      navigator.geolocation.getCurrentPosition(onPos, function(e2){
+        statusEl.textContent = e2.code===1
+          ? 'Standortzugriff verweigert. Bitte in den Einstellungen erlauben und neu laden.'
+          : 'Standort konnte nicht ermittelt werden. Am Fenster oder im Freien erneut versuchen.';
+      }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+    }, {enableHighAccuracy:false, timeout:8000, maximumAge:600000});
+
+    // Laufende Aktualisierung im Hintergrund
+    navigator.geolocation.watchPosition(onPos, ()=>{}, {enableHighAccuracy:false, maximumAge:60000});
   }
   if('geolocation' in navigator){
-    navigator.geolocation.getCurrentPosition(onPos,onPosErr,{enableHighAccuracy:true,timeout:15000});
-    navigator.geolocation.watchPosition(onPos,()=>{},{enableHighAccuracy:true,maximumAge:30000});
+    locate();
   } else {
     statusEl.textContent='Dieses Gerät unterstützt keine Standortermittlung.';
   }
@@ -296,17 +309,25 @@
     if(h!==null){ hasCompass=true; heading=h; render(); }
   }
 
+  function checkCompassArrived(){
+    setTimeout(function(){
+      if(!hasCompass){
+        statusEl.textContent='Kein Kompass-Sensor gefunden (am Computer normal). Die Nadel zeigt die Richtung bei nach Norden ausgerichteter Rose – Gradzahl siehe unten.';
+      }
+    }, 4000);
+  }
+
   function startCompass(){
     if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
       // iOS 13+: braucht Nutzergeste
       DeviceOrientationEvent.requestPermission().then(state=>{
         if(state==='granted'){
           window.addEventListener('deviceorientation', onOrient, true);
-          startBtn.classList.add('hidden');
+          checkCompassArrived();
         } else {
-          statusEl.textContent='Kompasszugriff verweigert – Richtung wird als Gradzahl angezeigt.';
-          startBtn.classList.add('hidden');
+          statusEl.textContent='Kompasszugriff verweigert – Richtung wird als Gradzahl angezeigt. Zum Zurücksetzen: Safari-Einstellungen → Datenschutz → Bewegung & Ausrichtung.';
         }
+        startBtn.classList.add('hidden');
       }).catch(()=>{ startBtn.classList.add('hidden'); });
     } else {
       if('ondeviceorientationabsolute' in window){
@@ -314,6 +335,7 @@
       }
       window.addEventListener('deviceorientation', onOrient, true);
       startBtn.classList.add('hidden');
+      checkCompassArrived();
     }
   }
 
