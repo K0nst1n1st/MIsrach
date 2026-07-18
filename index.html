@@ -132,7 +132,32 @@
     font-size:clamp(20px,5.5vw,26px); color:var(--stone);
   }
   .coinPanel .sub{ font-size:14px; color:var(--stone-dim); font-weight:300; max-width:300px }
-  .coin{ width:min(44vw,170px); aspect-ratio:1; perspective:900px }
+  .coinWrap{ display:flex; flex-direction:column; align-items:center }
+  .coin{ width:min(46vw,180px); aspect-ratio:1; perspective:1000px }
+  .coin.toss{ animation: arc 2.6s cubic-bezier(.34,.06,.42,1) }
+  @keyframes arc{
+    0%{ transform:translateY(0) }
+    42%{ transform:translateY(-16vh) }
+    76%{ transform:translateY(5px) }
+    88%{ transform:translateY(-12px) }
+    100%{ transform:translateY(0) }
+  }
+  .coin.landed{ animation: settle .55s ease-out }
+  @keyframes settle{
+    0%{ transform:rotateZ(0) } 30%{ transform:rotateZ(3deg) }
+    60%{ transform:rotateZ(-1.8deg) } 100%{ transform:rotateZ(0) }
+  }
+  .coinShadow{
+    width:58%; height:14px; margin-top:18px; border-radius:50%;
+    background:radial-gradient(closest-side, rgba(0,0,0,.6), transparent 72%);
+  }
+  .coin.toss ~ .coinShadow{ animation: shad 2.6s cubic-bezier(.34,.06,.42,1) }
+  @keyframes shad{
+    0%{ transform:scale(1); opacity:1 }
+    42%{ transform:scale(.4); opacity:.3 }
+    76%{ transform:scale(1.06) }
+    100%{ transform:scale(1); opacity:1 }
+  }
   .coinInner{
     width:100%; height:100%; position:relative;
     transform-style:preserve-3d;
@@ -140,14 +165,32 @@
   .face{
     position:absolute; inset:0; border-radius:50%;
     -webkit-backface-visibility:hidden; backface-visibility:hidden;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-family:'Frank Ruhl Libre',serif; color:#4A3A0D;
-    background:radial-gradient(circle at 35% 28%, #F0DA8C, #C9A227 62%, #8F701A);
-    border:5px solid #8A6D1C;
-    box-shadow:0 8px 30px rgba(0,0,0,.5), inset 0 0 0 3px rgba(255,240,190,.35);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+    background:radial-gradient(circle at 32% 26%, #F7E7A3 0%, #E4C25C 34%, #C9A227 62%, #8B6C18 100%);
+    box-shadow:
+      0 12px 36px rgba(0,0,0,.55),
+      inset 0 2px 6px rgba(255,246,210,.85),
+      inset 0 -5px 12px rgba(88,64,10,.6);
   }
-  .face .big{ font-size:clamp(40px,12vw,56px); font-weight:700; line-height:1 }
-  .face .small{ font-size:13px; letter-spacing:.12em; margin-top:4px }
+  .face::before{ /* geriffelter Münzrand */
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background:repeating-conic-gradient(rgba(116,88,18,.6) 0deg 2deg, transparent 2deg 6deg);
+    -webkit-mask:radial-gradient(circle, transparent 85%, #000 86%);
+            mask:radial-gradient(circle, transparent 85%, #000 86%);
+  }
+  .face::after{ /* innerer Prägering */
+    content:""; position:absolute; inset:9%; border-radius:50%;
+    border:2px solid rgba(116,88,18,.45);
+    box-shadow:inset 0 0 0 1.5px rgba(255,242,196,.55);
+  }
+  .face svg{ width:72%; height:72%; position:relative; z-index:1 }
+  .face .shine{
+    position:absolute; inset:0; border-radius:50%; z-index:2; pointer-events:none;
+    background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.6) 50%, transparent 68%);
+    transform:translateX(-130%);
+  }
+  .coin.landed .shine{ animation: sweep 1s .15s ease }
+  @keyframes sweep{ to{ transform:translateX(130%) } }
   .face.back{ transform:rotateX(180deg) }
   .choices{ display:flex; gap:14px }
   .choices button, .coinPanel .again{
@@ -169,7 +212,8 @@
   .verdict .no{ color:var(--stone-dim) }
 
   @media (prefers-reduced-motion: reduce){
-    .compass.aligned::after, .compass.aligned::before, .burst i{ animation:none }
+    .compass.aligned::after, .compass.aligned::before, .burst i,
+    .coin.toss, .coin.landed, .coin.toss ~ .coinShadow, .coin.landed .shine{ animation:none }
   }
 
   /* ---------- Infozeile ---------- */
@@ -251,16 +295,38 @@
   <button class="close" id="coinClose" aria-label="Schließen">×</button>
   <h2 id="coinTitle">Ausgerichtet zur Kotel</h2>
   <div class="sub" id="coinSub">Stell deine Frage im Stillen – wird es sich erfüllen? Wähle Kopf oder Zahl.</div>
-  <div class="coin">
-    <div class="coinInner" id="coinInner">
-      <div class="face front"><div class="big">₪</div><div class="small">ישראל</div></div>
-      <div class="face back"><div class="big">1</div><div class="small">שקל חדש</div></div>
+  <div class="coinWrap">
+    <div class="coin" id="coinOuter">
+      <div class="coinInner" id="coinInner">
+        <div class="face front">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <g fill="#7A5D14">
+              <!-- Lilie, Motiv der 1-Schekel-Münze -->
+              <path d="M50 12 C43.5 28 43.5 43 50 57 C56.5 43 56.5 28 50 12 Z"/>
+              <path d="M49 55 C40 50 30 41 26.5 24 C37 30 46 40 49.5 51 Z"/>
+              <path d="M51 55 C60 50 70 41 73.5 24 C63 30 54 40 50.5 51 Z"/>
+              <rect x="45" y="58" width="10" height="4" rx="1.5"/>
+              <path d="M44.5 64 L55.5 64 L53.5 73 L46.5 73 Z"/>
+            </g>
+            <text x="50" y="89" text-anchor="middle" font-family="Frank Ruhl Libre, serif" font-size="12" fill="#7A5D14">ישראל</text>
+          </svg>
+          <div class="shine"></div>
+        </div>
+        <div class="face back">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <text x="50" y="61" text-anchor="middle" font-family="Frank Ruhl Libre, serif" font-weight="700" font-size="50" fill="#7A5D14">1</text>
+            <text x="50" y="82" text-anchor="middle" font-family="Frank Ruhl Libre, serif" font-size="11.5" fill="#7A5D14">שקל חדש</text>
+          </svg>
+          <div class="shine"></div>
+        </div>
+      </div>
     </div>
+    <div class="coinShadow" aria-hidden="true"></div>
   </div>
   <div class="verdict" id="verdict"></div>
   <div class="choices" id="choices">
-    <button id="pickKopf">Kopf&nbsp;₪</button>
-    <button id="pickZahl">Zahl&nbsp;1</button>
+    <button id="pickKopf">Kopf · Lilie</button>
+    <button id="pickZahl">Zahl · 1</button>
   </div>
   <button class="again hidden" id="againBtn">Schließen</button>
 </div>
@@ -386,8 +452,8 @@
     b.innerHTML=s;
   })();
 
-  const coinPanel=$('coinPanel'), coinInner=$('coinInner'), verdict=$('verdict'),
-        choices=$('choices'), againBtn=$('againBtn'), coinSub=$('coinSub');
+  const coinPanel=$('coinPanel'), coinInner=$('coinInner'), coinOuter=$('coinOuter'),
+        verdict=$('verdict'), choices=$('choices'), againBtn=$('againBtn'), coinSub=$('coinSub');
   let flipping=false, coinRot=0;
 
   function openCoin(){
@@ -395,6 +461,7 @@
     choices.classList.remove('hidden');
     againBtn.classList.add('hidden');
     coinSub.textContent='Stell deine Frage im Stillen – wird es sich erfüllen? Wähle Kopf oder Zahl.';
+    coinOuter.classList.remove('toss','landed');
     coinInner.style.transition='none';
     coinRot=0; coinInner.style.transform='rotateX(0deg)';
     coinPanel.classList.add('show');
@@ -407,25 +474,31 @@
     flipping=true;
     choices.classList.add('hidden');
     coinSub.textContent='Die Münze fliegt …';
-    const result = Math.random()<0.5 ? 'kopf' : 'zahl';   // kopf = ₪-Seite (0°), zahl = 1-Seite (180°)
-    const target = 360*6 + (result==='zahl'?180:0);
+    const result = Math.random()<0.5 ? 'kopf' : 'zahl';   // kopf = Lilienseite (0°), zahl = 1-Seite (180°)
+    const target = 360*7 + (result==='zahl'?180:0);
     coinRot += target - (coinRot%360);
-    coinInner.style.transition='transform 2.6s cubic-bezier(.12,.72,.2,1)';
+    coinOuter.classList.remove('landed');
+    coinOuter.classList.add('toss');
+    coinInner.style.transition='transform 2.6s cubic-bezier(.34,.06,.42,1)';
     requestAnimationFrame(()=>{ coinInner.style.transform='rotateX('+coinRot+'deg)'; });
+
+    setTimeout(()=>{
+      coinOuter.classList.remove('toss');
+      coinOuter.classList.add('landed');
+      if(navigator.vibrate) navigator.vibrate(50);
+    }, 2600);
 
     setTimeout(()=>{
       const hit = choice===result;
       const resName = result==='kopf' ? 'Kopf' : 'Zahl';
       verdict.innerHTML = hit
-        ? '<span class="yes">'+resName+' – die Mauer sagt: Ja.</span>'
-        : '<span class="no">'+resName+' – diesmal nicht.</span>';
-      coinSub.textContent = hit
-        ? 'Deine Wahl hat sich erfüllt.'
-        : 'Richte dich neu aus und frag noch einmal.';
+        ? '<span class="yes">Bibi sagt: Ja.</span>'
+        : '<span class="no">Bibi sagt: Nein.</span>';
+      coinSub.textContent = 'Es kam '+resName+'. '+(hit ? 'Deine Wahl hat sich erfüllt.' : 'Richte dich neu aus und frag noch einmal.');
       if(navigator.vibrate) navigator.vibrate(hit?[60,80,120]:80);
       againBtn.classList.remove('hidden');
       flipping=false;
-    }, 2700);
+    }, 3100);
   }
 
   $('pickKopf').addEventListener('click',()=>flip('kopf'));
